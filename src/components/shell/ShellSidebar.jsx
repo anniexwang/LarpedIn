@@ -17,7 +17,7 @@ export default function ShellSidebar() {
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-sidebar-border bg-sidebar px-5 py-7 lg:flex">
-        <Link to="/overview" className="px-2">
+        <Link to="/" className="px-2">
           <Brand tone="ink" />
         </Link>
         <p className="mt-2 px-2 text-[9px] uppercase tracking-[0.32em] text-sidebar-foreground/40">
