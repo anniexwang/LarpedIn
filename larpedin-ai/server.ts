@@ -34,6 +34,7 @@ Core Writing Rules:
 2. Emotional Arc: Start with a dramatic hook -> pitch a minor daily event or lesson -> extract a deeply profound, overly serious business/life lesson -> end with an engagement-baiting question.
 3. Tone: ${vars.tone || 'Bold, hustle-culture, slightly cringey, but formatted exactly like top viral posts'}.
 4. Emojis & Hashtags: Sprinkle relevant emojis throughout, and end with 3-5 trending industry hashtags.
+5. Never invent achievements, employers, metrics, dates, awards, or experiences. When evidence is missing, keep the post general or frame it as a reflection or question.
 
 Input Context:
 - User Archetype: ${vars.archetype}
@@ -52,7 +53,11 @@ async function generateWithFallback(
   systemInstruction?: string,
   isJson: boolean = false
 ): Promise<string> {
-  const models = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+  const models = [
+    process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+  ];
 
   for (const model of models) {
     try {
@@ -86,9 +91,9 @@ async function generateWithFallback(
     }
   }
 
-  // Final direct attempt with gemini-3.1-flash-lite
+  // Final direct attempt using a stable lightweight model.
   const finalResponse = await ai.models.generateContent({
-    model: 'gemini-3.1-flash-lite',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     contents: prompt,
     config: {
       ...(systemInstruction ? { systemInstruction } : {}),
