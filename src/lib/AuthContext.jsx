@@ -1,8 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { removeAccessToken } from '@base44/sdk';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 const getStoredUser = () => {
   try {
@@ -30,29 +31,13 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
-      
+
       try {
         const publicSettings = await base44.app.getPublicSettings();
         setAppPublicSettings(publicSettings);
-        
-        // If we got the app public settings successfully, check if user is authenticated
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          const stored = getStoredUser();
-          if (stored) {
-            setUser(stored);
-            setIsAuthenticated(true);
-          } else {
-            setIsAuthenticated(false);
-          }
-          setIsLoadingAuth(false);
-          setAuthChecked(true);
-        }
-        setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.warn('Base44 app backend check unavailable; using local auth session:', appError);
-        
+
         // Handle app-level errors if running on Base44 cloud
         if (appError?.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
@@ -83,10 +68,14 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false);
           }
         }
+      } finally {
         setIsLoadingPublicSettings(false);
-        setIsLoadingAuth(false);
-        setAuthChecked(true);
       }
+
+      // The SDK can restore a session from storage or cookies after this module
+      // has been initialized, so an appParams.token snapshot is not a reliable
+      // indication of whether the user is signed in.
+      await checkUserAuth();
     } catch (error) {
       console.error('Unexpected auth check error:', error);
       const stored = getStoredUser();
@@ -108,6 +97,7 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+      setAuthError(null);
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
@@ -130,24 +120,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+
+    // Clear Base44 tokens
+    removeAccessToken();
+    removeAccessToken({ storageKey: 'token' });
+
+    // Clear Google and Calendar local session data
     localStorage.removeItem('auth_user');
     localStorage.removeItem('google_access_token');
     localStorage.removeItem('calendar_access_token');
     localStorage.removeItem('calendar_events');
-    
+
+    if (!shouldRedirect || typeof window === 'undefined') {
+      return;
+    }
+
     try {
-      if (shouldRedirect) {
-        base44.auth.logout(window.location.origin + '/login');
-      } else {
-        base44.auth.logout();
+      if (appParams.appBaseUrl && appParams.appId) {
+        const logoutUrl = new URL('/api/apps/auth/logout', appParams.appBaseUrl || window.location.origin);
+        logoutUrl.searchParams.set('from_url', window.location.origin + '/');
+        await fetch(logoutUrl, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'X-App-Id': String(appParams.appId || ''),
+          },
+        });
       }
-    } catch {
-      if (shouldRedirect) {
-        window.location.href = '/login';
-      }
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    } finally {
+      window.location.replace('/');
     }
   };
 
@@ -156,11 +162,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
+    <AuthContext.Provider value={{
+      user,
       setUser,
       setIsAuthenticated,
-      isAuthenticated, 
+      isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,

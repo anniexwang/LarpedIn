@@ -20,7 +20,7 @@ export default function ShellTopbar() {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
-        <Link to="/overview" className="lg:hidden">
+        <Link to="/" className="lg:hidden">
           <Brand tone="light" />
         </Link>
         <p className="hidden text-[10px] uppercase tracking-[0.28em] text-muted-foreground lg:block">
