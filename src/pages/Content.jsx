@@ -12,6 +12,13 @@ export default function Content() {
   const [platform, setPlatform] = useState('LinkedIn');
   const [variant, setVariant] = useState(0);
   const [queue, setQueue] = useState(QUEUED);
+  const [savedDrafts, setSavedDrafts] = useState(() => {
+  try {
+    return JSON.parse(localStorage.getItem('larpedin-drafts') || '[]');
+  } catch {
+    return [];
+  }
+});
   const { toast } = useToast();
 
   const event = EVENTS.find((item) => item.id === selectedId) || EVENTS[0];
@@ -21,7 +28,8 @@ export default function Content() {
     setDraft(composeDraft(event, tone, variant, platform));
   }, [event, tone, variant, platform]);
 
-  const regenerate = () => setVariant((value) => value + 1);
+  
+  
 
   const addToQueue = () => {
     const title = draft.split('\n')[0].slice(0, 64);

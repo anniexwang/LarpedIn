@@ -1,7 +1,8 @@
-import { RefreshCw, Send } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { TONES, PLATFORMS, formatEventDate } from '@/lib/mockData';
-import { cn } from '@/lib/utils';
+import { RefreshCw, Send } from "lucide-react";
+import { RefreshCw, Send, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TONES, PLATFORMS, formatEventDate } from "@/lib/mockData";
+import { cn } from "@/lib/utils";
 
 export default function PostComposer({
   event,
@@ -20,8 +21,12 @@ export default function PostComposer({
     <section className="overflow-hidden rounded-[1.5rem] border border-border bg-card">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
         <div className="min-w-0">
-          <p className="text-[9.5px] uppercase tracking-[0.26em] text-muted-foreground">Draft from</p>
-          <h2 className="display mt-2 truncate text-[21px] leading-tight">{event.title}</h2>
+          <p className="text-[9.5px] uppercase tracking-[0.26em] text-muted-foreground">
+            Draft from
+          </p>
+          <h2 className="display mt-2 truncate text-[21px] leading-tight">
+            {event.title}
+          </h2>
           <p className="mt-1 text-[10.5px] text-muted-foreground">
             {event.type} · {formatEventDate(event.date)} · {event.time}
           </p>
@@ -33,10 +38,10 @@ export default function PostComposer({
               type="button"
               onClick={() => setPlatform(item)}
               className={cn(
-                'rounded-full px-3 py-1 text-[10.5px] font-medium transition-colors',
+                "rounded-full px-3 py-1 text-[10.5px] font-medium transition-colors",
                 platform === item
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {item}
@@ -52,10 +57,10 @@ export default function PostComposer({
             type="button"
             onClick={() => setTone(item.id)}
             className={cn(
-              'rounded-full border px-3 py-1.5 text-[10.5px] font-medium transition-colors',
+              "rounded-full border px-3 py-1.5 text-[10.5px] font-medium transition-colors",
               tone === item.id
-                ? 'border-accent bg-accent/10 text-accent'
-                : 'border-border text-muted-foreground hover:text-foreground'
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border text-muted-foreground hover:text-foreground",
             )}
           >
             {item.label}
@@ -75,8 +80,22 @@ export default function PostComposer({
             {words} words · {platform}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="rounded-full" onClick={onRegenerate}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={onRegenerate}
+            >
               <RefreshCw className="mr-1.5 h-3 w-3" /> Regenerate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={onSaveDraft}
+            >
+              <Save className="mr-1.5 h-3 w-3" />
+              Save Draft
             </Button>
             <Button size="sm" className="rounded-full px-4" onClick={onQueue}>
               <Send className="mr-1.5 h-3 w-3" /> Add to queue

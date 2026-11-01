@@ -15,5 +15,12 @@ export default defineConfig({
       visualEditAgent: true
     }),
     react(),
-  ]
+  ],
+  server: {
+    proxy: {
+      '/api/generate': 'http://localhost:3000',
+      '/api/refine': 'http://localhost:3000',
+      '/api/hooks': 'http://localhost:3000',
+    },
+  },
 });

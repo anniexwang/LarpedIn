@@ -1,11 +1,12 @@
-import express from 'express';
-import { createServer as createViteServer } from 'vite';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import express from "express";
+import { createServer as createViteServer } from "vite";
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
 
-dotenv.config();
+dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env" });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,7 +17,7 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json());
 
 const getApiKey = () => {
-  return process.env.GEMINI_API_KEY || '';
+  return process.env.GEMINI_API_KEY || "";
 };
 
 // System instructions generator connecting variables directly
@@ -32,7 +33,7 @@ const buildLarpdinSystemInstruction = (vars: {
 Core Writing Rules:
 1. Short, dramatic single sentences with frequent line breaks (classic mobile-optimized LinkedIn style).
 2. Emotional Arc: Start with a dramatic hook -> pitch a minor daily event or lesson -> extract a deeply profound, overly serious business/life lesson -> end with an engagement-baiting question.
-3. Tone: ${vars.tone || 'Bold, hustle-culture, slightly cringey, but formatted exactly like top viral posts'}.
+3. Tone: ${vars.tone || "Bold, hustle-culture, slightly cringey, but formatted exactly like top viral posts"}.
 4. Emojis & Hashtags: Sprinkle relevant emojis throughout, and end with 3-5 trending industry hashtags.
 5. Never invent achievements, employers, metrics, dates, awards, or experiences. When evidence is missing, keep the post general or frame it as a reflection or question.
 
@@ -51,13 +52,9 @@ async function generateWithFallback(
   ai: GoogleGenAI,
   prompt: string,
   systemInstruction?: string,
-  isJson: boolean = false
+  isJson: boolean = false,
 ): Promise<string> {
-  const models = [
-    process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-2.0-flash',
-  ];
+  const models = [process.env.GEMINI_MODEL || "gemini-3.8-flash"];
 
   for (const model of models) {
     try {
@@ -66,7 +63,7 @@ async function generateWithFallback(
         config.systemInstruction = systemInstruction;
       }
       if (isJson) {
-        config.responseMimeType = 'application/json';
+        config.responseMimeType = "application/json";
       }
 
       // Fast deadline per model to quickly fall back if 503/504
@@ -79,11 +76,11 @@ async function generateWithFallback(
       const response = await Promise.race([
         callPromise,
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout with ${model}`)), 9000)
+          setTimeout(() => reject(new Error(`Timeout with ${model}`)), 9000),
         ),
       ]);
 
-      const text = (response.text || '').trim();
+      const text = (response.text || "").trim();
       if (text) return text;
     } catch (err: any) {
       console.warn(`Model ${model} attempt failed:`, err?.message || err);
@@ -93,35 +90,46 @@ async function generateWithFallback(
 
   // Final direct attempt using a stable lightweight model.
   const finalResponse = await ai.models.generateContent({
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
     contents: prompt,
     config: {
       ...(systemInstruction ? { systemInstruction } : {}),
-      ...(isJson ? { responseMimeType: 'application/json' } : {}),
+      ...(isJson ? { responseMimeType: "application/json" } : {}),
     },
   });
 
-  return (finalResponse.text || '').trim();
+  return (finalResponse.text || "").trim();
 }
 
-app.post('/api/generate', async (req, res) => {
+app.post("/api/generate", async (req, res) => {
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
       return res.status(400).json({
-        error: 'GEMINI_API_KEY is not configured. Please ensure your API key is configured in Settings > Secrets.',
+        error:
+          "GEMINI_API_KEY is not configured. Please ensure your API key is configured in Settings > Secrets.",
       });
     }
 
-    const archetype = req.body.archetype || req.body.userArchetype || 'Job Seeker';
-    const industry = req.body.industry || 'Technology & Software';
-    const goal = req.body.goal || req.body.goals || 'Thought Leadership & Networking';
-    const focus_areas = req.body.focus_areas || req.body.careerInterests || 'Software Engineering, Product';
-    const calendar_event = req.body.calendar_event || req.body.calendarEvent || 'Meeting with manager to discuss roadmap';
-    const tone = req.body.tone || 'Bold, hustle-culture, slightly cringey, but formatted like top viral posts';
+    const archetype =
+      req.body.archetype || req.body.userArchetype || "Job Seeker";
+    const industry = req.body.industry || "Technology & Software";
+    const goal =
+      req.body.goal || req.body.goals || "Thought Leadership & Networking";
+    const focus_areas =
+      req.body.focus_areas ||
+      req.body.careerInterests ||
+      "Software Engineering, Product";
+    const calendar_event =
+      req.body.calendar_event ||
+      req.body.calendarEvent ||
+      "Meeting with manager to discuss roadmap";
+    const tone =
+      req.body.tone ||
+      "Bold, hustle-culture, slightly cringey, but formatted like top viral posts";
     const topic = req.body.topic || calendar_event;
-    const userFacts = req.body.userFacts || '';
-    const hookStyle = req.body.hookStyle || '';
+    const userFacts = req.body.userFacts || "";
+    const hookStyle = req.body.hookStyle || "";
 
     const systemInstruction = buildLarpdinSystemInstruction({
       archetype,
@@ -136,7 +144,7 @@ app.post('/api/generate', async (req, res) => {
       apiKey,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build',
+          "User-Agent": "aistudio-build",
         },
       },
     });
@@ -149,8 +157,8 @@ app.post('/api/generate', async (req, res) => {
 - Professional Goal: ${goal}
 - Focus Areas / Skills: ${focus_areas}
 - Preferred Tone: ${tone}
-${hookStyle ? `- Hook Angle: ${hookStyle}` : ''}
-${userFacts ? `- Additional Real Notes: ${userFacts}` : ''}
+${hookStyle ? `- Hook Angle: ${hookStyle}` : ""}
+${userFacts ? `- Additional Real Notes: ${userFacts}` : ""}
 
 Remember the Core Writing Rules:
 1. Dramatic single sentences with frequent line breaks.
@@ -162,11 +170,11 @@ Remember the Core Writing Rules:
       ai,
       userPrompt,
       systemInstruction,
-      false
+      false,
     );
 
     const wordCount = generatedPost
-      .replace(/[#\n\r]/g, ' ')
+      .replace(/[#\n\r]/g, " ")
       .trim()
       .split(/\s+/)
       .filter(Boolean).length;
@@ -176,19 +184,20 @@ Remember the Core Writing Rules:
       wordCount,
     });
   } catch (error: any) {
-    console.error('Error generating post:', error);
+    console.error("Error generating post:", error);
     return res.status(500).json({
-      error: error?.message || 'Failed to generate LinkedIn post. Please try again.',
+      error:
+        error?.message || "Failed to generate LinkedIn post. Please try again.",
     });
   }
 });
 
-app.post('/api/refine', async (req, res) => {
+app.post("/api/refine", async (req, res) => {
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
       return res.status(400).json({
-        error: 'GEMINI_API_KEY is not configured.',
+        error: "GEMINI_API_KEY is not configured.",
       });
     }
 
@@ -208,23 +217,26 @@ app.post('/api/refine', async (req, res) => {
     } = req.body;
 
     if (!currentPost || !instruction) {
-      return res.status(400).json({ error: 'currentPost and instruction are required.' });
+      return res
+        .status(400)
+        .json({ error: "currentPost and instruction are required." });
     }
 
     const systemInstruction = buildLarpdinSystemInstruction({
-      archetype: archetype || userArchetype || 'Job Seeker',
-      industry: industry || 'Technology & Software',
-      goal: goal || goals || 'Thought Leadership',
-      focus_areas: focus_areas || careerInterests || 'General',
-      calendar_event: calendar_event || calendarEvent || 'Recent workday experience',
-      tone: tone || 'Bold & Hustle-Culture',
+      archetype: archetype || userArchetype || "Job Seeker",
+      industry: industry || "Technology & Software",
+      goal: goal || goals || "Thought Leadership",
+      focus_areas: focus_areas || careerInterests || "General",
+      calendar_event:
+        calendar_event || calendarEvent || "Recent workday experience",
+      tone: tone || "Bold & Hustle-Culture",
     });
 
     const ai = new GoogleGenAI({
       apiKey,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build',
+          "User-Agent": "aistudio-build",
         },
       },
     });
@@ -247,11 +259,11 @@ Instructions:
       ai,
       prompt,
       systemInstruction,
-      false
+      false,
     );
 
     const wordCount = refinedPost
-      .replace(/[#\n\r]/g, ' ')
+      .replace(/[#\n\r]/g, " ")
       .trim()
       .split(/\s+/)
       .filter(Boolean).length;
@@ -261,19 +273,19 @@ Instructions:
       wordCount,
     });
   } catch (error: any) {
-    console.error('Error refining post:', error);
+    console.error("Error refining post:", error);
     return res.status(500).json({
-      error: error?.message || 'Failed to refine LinkedIn post.',
+      error: error?.message || "Failed to refine LinkedIn post.",
     });
   }
 });
 
-app.post('/api/hooks', async (req, res) => {
+app.post("/api/hooks", async (req, res) => {
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
       return res.status(400).json({
-        error: 'GEMINI_API_KEY is not configured.',
+        error: "GEMINI_API_KEY is not configured.",
       });
     }
 
@@ -283,14 +295,14 @@ app.post('/api/hooks', async (req, res) => {
       apiKey,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build',
+          "User-Agent": "aistudio-build",
         },
       },
     });
 
-    const prompt = `Topic / Event: "${topic || calendarEvent || 'Daily work lesson'}"
-Industry: "${industry || 'Technology'}"
-Tone: "${tone || 'Bold & Hustle-Culture'}"
+    const prompt = `Topic / Event: "${topic || calendarEvent || "Daily work lesson"}"
+Industry: "${industry || "Technology"}"
+Tone: "${tone || "Bold & Hustle-Culture"}"
 
 Provide 4 distinct, viral scroll-stopping opening hook lines for a LinkedIn post.
 - Hook 1: Dramatic contrarian statement
@@ -305,7 +317,7 @@ Example: ["Hook 1...", "Hook 2...", "Hook 3...", "Hook 4..."]`;
 
     let hooks: string[] = [];
     try {
-      hooks = JSON.parse(jsonText || '[]');
+      hooks = JSON.parse(jsonText || "[]");
     } catch {
       hooks = [
         `Yesterday at 9:00 AM, my entire perspective changed.`,
@@ -317,30 +329,30 @@ Example: ["Hook 1...", "Hook 2...", "Hook 3...", "Hook 4..."]`;
 
     return res.json({ hooks });
   } catch (error: any) {
-    console.error('Error generating hooks:', error);
+    console.error("Error generating hooks:", error);
     return res.status(500).json({
-      error: error?.message || 'Failed to generate hook ideas.',
+      error: error?.message || "Failed to generate hook ideas.",
     });
   }
 });
 
 async function startServer() {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = process.env.NODE_ENV === "production";
 
   if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa',
+      appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    app.use(express.static(path.join(__dirname, "dist")));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(__dirname, "dist", "index.html"));
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`LarpedIn AI server running at http://0.0.0.0:${PORT}`);
   });
 }
