@@ -1,6 +1,7 @@
-import { Camera, Upload, Check } from 'lucide-react';
+import { Camera, Upload, Check, Loader2 } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import { RATIOS } from '@/lib/mockData';
+import { fileToDataUrl } from '@/lib/imageData';
 import { cn } from '@/lib/utils';
 
 const FRAME = {
@@ -9,10 +10,11 @@ const FRAME = {
   '16:9': 'aspect-[16/9]',
 };
 
-export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, setRatio }) {
-  const readFile = (inputEvent) => {
+export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, setRatio, result, loading }) {
+  const readFile = async (inputEvent) => {
     const file = inputEvent.target.files?.[0];
-    if (file) onPhoto(URL.createObjectURL(file));
+    inputEvent.target.value = '';
+    if (file) onPhoto(await fileToDataUrl(file));
   };
 
   return (
@@ -26,6 +28,17 @@ export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, s
             className="absolute inset-0 h-full w-full"
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
+
+          {result && (
+            <img src={result} alt="Your generated headshot" className="absolute inset-0 z-10 h-full w-full object-cover" />
+          )}
+
+          {loading && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-[#010736]/60 text-white backdrop-blur-sm">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="text-[12px] font-medium">Suiting you up... (~20s)</span>
+            </div>
+          )}
 
           <div className="absolute inset-0 flex items-center justify-center p-[7%]">
             {photo ? (

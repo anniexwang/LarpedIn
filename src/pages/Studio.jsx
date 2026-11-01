@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, Sparkles, Scissors, X } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
 import StudioStage from '@/components/studio/StudioStage';
 import OptionGrid from '@/components/studio/OptionGrid';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { OUTFITS, BACKDROPS } from '@/lib/mockData';
+import { fileToDataUrl } from '@/lib/imageData';
+import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -15,32 +17,83 @@ const TABS = [
 
 export default function Studio() {
   const [photo, setPhoto] = useState(null);
+  const [hairPhoto, setHairPhoto] = useState(null);
   const [outfit, setOutfit] = useState(OUTFITS[1]);
   const [backdrop, setBackdrop] = useState(BACKDROPS[0]);
   const [ratio, setRatio] = useState('4:5');
   const [tab, setTab] = useState('outfits');
   const [myOutfits, setMyOutfits] = useState([]);
   const [myBackdrops, setMyBackdrops] = useState([]);
+  const [results, setResults] = useState([]);
+  const [picked, setPicked] = useState(0);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const addUpload = (file, setList, select) => {
+  const result = results[picked];
+
+  // Any change to the inputs clears the old result so the preview is live again.
+  const changeInput = (setter) => (value) => {
+    setter(value);
+    setResults([]);
+  };
+
+  const addUpload = async (file, setList, select) => {
     if (!file) return;
     const item = {
       id: `custom-${Date.now()}`,
       name: file.name.replace(/\.[^.]+$/, '').slice(0, 26) || 'Your own image',
       detail: 'Uploaded by you',
-      image: URL.createObjectURL(file),
+      image: await fileToDataUrl(file),
     };
     setList((list) => [...list, item]);
     select(item);
     toast({ title: 'Added to your library', description: item.name });
   };
 
-  const exportPreview = () => {
-    toast({
-      title: 'Preview exported',
-      description: `${outfit.name} · ${backdrop.name} · ${ratio} — ready for your profile.`,
-    });
+  const pickHair = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setHairPhoto(await fileToDataUrl(file));
+    setResults([]);
+  };
+
+  const generate = async () => {
+    if (!photo) {
+      toast({ title: 'Add a photo first', description: 'Take a selfie or upload one.' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await base44.functions.invoke('generatePortrait', {
+        selfie: photo,
+        outfitImage: outfit.image,
+        backdropImage: backdrop.image,
+        hairPhoto,
+        ratio,
+        numImages: 2,
+      });
+      if (res.data?.error) throw new Error(res.data.error);
+      setResults(res.data.images);
+      setPicked(0);
+    } catch (err) {
+      toast({
+        title: 'Could not generate your headshot',
+        description: err?.response?.data?.error || err.message || 'Try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const download = async () => {
+    const blob = await (await fetch(result)).blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'larpedin-headshot.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   return (
@@ -48,28 +101,68 @@ export default function Studio() {
       <PageHeader
         eyebrow="The studio"
         title="Compose a portrait."
-        description="Choose a suit, pick a backdrop, or bring your own. Every combination previews live — nothing is final until you export."
+        description="Choose a suit, pick a backdrop, or bring your own. Your face stays exactly as it is, we only change what you're wearing and what's behind you."
       />
 
       <div className="grid gap-5 pt-6 lg:grid-cols-[minmax(0,1fr)_344px]">
         <div className="space-y-3.5">
           <StudioStage
             photo={photo}
-            onPhoto={setPhoto}
+            onPhoto={changeInput(setPhoto)}
             outfit={outfit}
             backdrop={backdrop}
             ratio={ratio}
-            setRatio={setRatio}
+            setRatio={changeInput(setRatio)}
+            result={result}
+            loading={loading}
           />
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {photo
-                ? 'Photo loaded — swap the look any time.'
-                : 'Your photo never leaves this preview.'}
-            </p>
-            <Button onClick={exportPreview} size="sm" className="rounded-full px-4">
-              <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-            </Button>
+
+          {results.length > 1 && (
+            <div className="flex gap-2">
+              {results.map((url, i) => (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => setPicked(i)}
+                  className={cn(
+                    'h-16 w-16 overflow-hidden rounded-lg border-2',
+                    i === picked ? 'border-accent' : 'border-transparent'
+                  )}
+                >
+                  <img src={url} alt={`Option ${i + 1}`} className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {hairPhoto ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border py-1 pl-1 pr-2 text-[11px]">
+                  <img src={hairPhoto} alt="Hair reference" className="h-6 w-6 rounded-full object-cover" />
+                  Hair photo added
+                  <button type="button" aria-label="Remove hair photo" onClick={() => { setHairPhoto(null); setResults([]); }}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ) : (
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+                  <Scissors className="h-3 w-3" strokeWidth={2} /> Add hair photo (optional)
+                  <input type="file" accept="image/*" className="hidden" onChange={pickHair} />
+                </label>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              {result && (
+                <Button onClick={download} size="sm" variant="outline" className="rounded-full px-4">
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Download
+                </Button>
+              )}
+              <Button onClick={generate} size="sm" className="rounded-full px-4" disabled={loading}>
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" /> {result ? 'Regenerate' : 'Generate headshot'}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -96,16 +189,16 @@ export default function Studio() {
             <OptionGrid
               options={[...OUTFITS, ...myOutfits]}
               selectedId={outfit.id}
-              onSelect={setOutfit}
-              onUpload={(file) => addUpload(file, setMyOutfits, setOutfit)}
+              onSelect={changeInput(setOutfit)}
+              onUpload={(file) => addUpload(file, setMyOutfits, changeInput(setOutfit))}
               uploadLabel="Upload your own outfit"
             />
           ) : (
             <OptionGrid
               options={[...BACKDROPS, ...myBackdrops]}
               selectedId={backdrop.id}
-              onSelect={setBackdrop}
-              onUpload={(file) => addUpload(file, setMyBackdrops, setBackdrop)}
+              onSelect={changeInput(setBackdrop)}
+              onUpload={(file) => addUpload(file, setMyBackdrops, changeInput(setBackdrop))}
               uploadLabel="Upload your own backdrop"
             />
           )}

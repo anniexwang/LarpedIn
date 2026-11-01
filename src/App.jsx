@@ -53,10 +53,14 @@ const AuthenticatedApp = () => {
 
       <Route path="/" element={<Landing />} />
 
+      {/* Headshot studio is public: no login needed */}
+      <Route element={<AppShell />}>
+        <Route path="/studio" element={<Studio />} />
+      </Route>
+
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<AppShell />}>
           <Route path="/overview" element={<Home />} />
-          <Route path="/studio" element={<Studio />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/content" element={<Content />} />
         </Route>
