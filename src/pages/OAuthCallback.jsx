@@ -14,6 +14,10 @@ export default function OAuthCallback() {
   const [message, setMessage] = useState('Connecting to Google Calendar...');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Extract return destination from state parameter if present
+  const stateParam = searchParams.get('state');
+  const destination = stateParam ? decodeURIComponent(stateParam) : '/calendar';
+
   // Prevent duplicate token exchange in React 18 StrictMode
   const exchangeStartedRef = useRef(false);
 
@@ -101,6 +105,19 @@ export default function OAuthCallback() {
       localStorage.setItem('google_access_token', token);
       localStorage.setItem('calendar_access_token', token);
 
+      // Fetch user profile from Google to sign user into the app
+      try {
+        const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          localStorage.setItem('auth_user', JSON.stringify(profile));
+        }
+      } catch (profileErr) {
+        console.warn('Could not fetch Google profile info:', profileErr);
+      }
+
       setMessage('Fetching your schedule from Google Calendar...');
 
       // 3. Immediately call fetchCalendarEvents from calendar.js
@@ -139,18 +156,18 @@ export default function OAuthCallback() {
         status === 'success' ? (
           <button
             type="button"
-            onClick={() => navigate('/calendar')}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full h-11 bg-primary text-primary-foreground font-medium text-sm transition-transform hover:-translate-y-0.5"
+            onClick={() => navigate(destination)}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-full h-11 bg-primary text-primary-foreground font-medium text-sm transition-transform hover:-translate-y-0.5 cursor-pointer"
           >
-            Continue to Calendar <ArrowRight className="h-4 w-4" />
+            Continue <ArrowRight className="h-4 w-4" />
           </button>
         ) : status === 'error' ? (
           <button
             type="button"
-            onClick={() => navigate('/calendar')}
-            className="w-full inline-flex items-center justify-center rounded-full h-11 border border-border bg-card text-foreground font-medium text-sm transition-colors hover:bg-secondary"
+            onClick={() => navigate('/login')}
+            className="w-full inline-flex items-center justify-center rounded-full h-11 border border-border bg-card text-foreground font-medium text-sm transition-colors hover:bg-secondary cursor-pointer"
           >
-            Return to Calendar
+            Return to Login
           </button>
         ) : null
       }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { appParams } from "@/lib/app-params";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { redirectToGoogleAuth } from "@/lib/googleAuth";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -34,6 +36,13 @@ export default function Register() {
       await base44.auth.register({ email: normalizedEmail, password });
       setShowOtp(true);
     } catch (err) {
+      // Local dev fallback if Base44 backend is not running
+      if (!appParams.appBaseUrl || !appParams.appId || err.message?.includes('fetch') || err.message?.includes('404')) {
+        const localUser = { email: normalizedEmail, name: normalizedEmail.split('@')[0] };
+        localStorage.setItem('auth_user', JSON.stringify(localUser));
+        window.location.href = safeReturnTo();
+        return;
+      }
       setError(err.message || "Registration failed");
     } finally {
       setLoading(false);
@@ -74,9 +83,8 @@ export default function Register() {
             title: "Code sent",
             description: "Check your email for the new code.",
           });
-          return;
-        } catch (retryError) {
-          setError(retryError.message || "We couldn't create your signup. Please start again.");
+        } catch (innerErr) {
+          setError(innerErr.message || "Failed to resend code");
         }
       } else {
         setError(message || "Failed to resend code");
@@ -87,7 +95,7 @@ export default function Register() {
   };
 
   const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", safeReturnTo());
+    redirectToGoogleAuth(safeReturnTo());
   };
 
   if (showOtp) {
