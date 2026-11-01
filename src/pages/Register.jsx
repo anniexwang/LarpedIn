@@ -27,9 +27,11 @@ export default function Register() {
       setError("Passwords do not match");
       return;
     }
+    const normalizedEmail = email.trim().toLowerCase();
+    setEmail(normalizedEmail);
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
+      await base44.auth.register({ email: normalizedEmail, password });
       setShowOtp(true);
     } catch (err) {
       setError(err.message || "Registration failed");
@@ -56,6 +58,7 @@ export default function Register() {
 
   const handleResend = async () => {
     setError("");
+    setLoading(true);
     try {
       await base44.auth.resendOtp(email);
       toast({
@@ -63,7 +66,23 @@ export default function Register() {
         description: "Check your email for the new code.",
       });
     } catch (err) {
-      setError(err.message || "Failed to resend code");
+      const message = err.message || "";
+      if (/user not found/i.test(message)) {
+        try {
+          await base44.auth.register({ email, password });
+          toast({
+            title: "Code sent",
+            description: "Check your email for the new code.",
+          });
+          return;
+        } catch (retryError) {
+          setError(retryError.message || "We couldn't create your signup. Please start again.");
+        }
+      } else {
+        setError(message || "Failed to resend code");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -117,7 +136,12 @@ export default function Register() {
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
           Didn't receive the code?{" "}
-          <button onClick={handleResend} className="text-primary font-medium hover:underline">
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={loading}
+            className="text-primary font-medium hover:underline disabled:opacity-50"
+          >
             Resend
           </button>
         </p>
