@@ -36,7 +36,7 @@ export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, s
           {loading && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-[#03045e]/60 text-[#caf0f8] backdrop-blur-sm">
               <Loader2 className="h-6 w-6 animate-spin" />
-              <span className="text-[12px] font-medium">Suiting you up... (~20s)</span>
+              <span className="text-[12px] font-medium">Suiting you up... (up to a minute)</span>
             </div>
           )}
 

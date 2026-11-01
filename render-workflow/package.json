@@ -6,12 +6,14 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "start:api": "node server.js",
     "dev": "render workflows dev -- npm start"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@base44/sdk": "0.8.57",
     "@renderinc/sdk": "^1.0.0"
   }
 }

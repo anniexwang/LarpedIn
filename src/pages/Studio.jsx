@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { OUTFITS, BACKDROPS } from '@/lib/mockData';
 import { fileToDataUrl } from '@/lib/imageData';
-import { base44 } from '@/api/base44Client';
+import { generateHeadshots } from '@/lib/headshotApi';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -65,7 +65,7 @@ export default function Studio() {
     }
     setLoading(true);
     try {
-      const res = await base44.functions.invoke('generatePortrait', {
+      const images = await generateHeadshots({
         selfie: photo,
         outfitImage: outfit.image,
         backdropImage: backdrop.image,
@@ -73,13 +73,12 @@ export default function Studio() {
         ratio,
         numImages: 2,
       });
-      if (res.data?.error) throw new Error(res.data.error);
-      setResults(res.data.images);
+      setResults(images);
       setPicked(0);
     } catch (err) {
       toast({
         title: 'Could not generate your headshot',
-        description: err?.response?.data?.error || err.message || 'Try again in a moment.',
+        description: err.message || 'Try again in a moment.',
         variant: 'destructive',
       });
     } finally {
