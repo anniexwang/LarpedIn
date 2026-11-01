@@ -1,13 +1,43 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import SignalList from "@/components/content/SignalList";
 import PostComposer from "@/components/content/PostComposer";
 import QueueList from "@/components/content/QueueList";
+import PostSettings from "@/components/content/PostSettings";
+import { generatePost } from "@/lib/postGenerator";
+import { getCalendarEvents } from "@/lib/calendarData";
 import { useToast } from "@/components/ui/use-toast";
-import { EVENTS, QUEUED, composeDraft, formatEventDate } from "@/lib/mockData";
+import { EVENTS, QUEUED, TONES, composeDraft, formatEventDate } from "@/lib/mockData";
+
+function readStored(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export default function Content() {
-  const [selectedId, setSelectedId] = useState(EVENTS[0].id);
+  // Events the user typed in themselves, plus Google Calendar events (once linked), plus samples.
+  const [customEvents, setCustomEvents] = useState(() => readStored("larpedin-custom-events", []));
+  const calendarEvents = useMemo(() => {
+    try {
+      return getCalendarEvents();
+    } catch {
+      return [];
+    }
+  }, []);
+  const allEvents = useMemo(
+    () => [...customEvents, ...calendarEvents, ...EVENTS],
+    [customEvents, calendarEvents],
+  );
+
+  const [selectedId, setSelectedId] = useState(() => allEvents[0].id);
+  const [industry, setIndustry] = useState(() => readStored("larpedin-industry", ""));
+  const [customTone, setCustomTone] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [aiDraft, setAiDraft] = useState(false);
   const [tone, setTone] = useState("insightful");
   const [platform, setPlatform] = useState("LinkedIn");
   const [variant, setVariant] = useState(0);
@@ -21,37 +51,107 @@ export default function Content() {
   });
   const { toast } = useToast();
 
-  const event = EVENTS.find((item) => item.id === selectedId) || EVENTS[0];
+  const event = allEvents.find((item) => item.id === selectedId) || allEvents[0];
   const [draft, setDraft] = useState(() =>
     composeDraft(event, "insightful", 0, "LinkedIn"),
   );
 
+  // Template text is just a placeholder until the AI writes a real post.
   useEffect(() => {
-    setDraft(composeDraft(event, tone, variant, platform));
-  }, [event, tone, variant, platform]);
+    if (!aiDraft) setDraft(composeDraft(event, tone, variant, platform));
+  }, [event, tone, variant, platform, aiDraft]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("larpedin-industry", JSON.stringify(industry));
+    } catch {
+      /* ignore */
+    }
+  }, [industry]);
+
+  const selectEvent = (id) => {
+    setSelectedId(id);
+    setAiDraft(false);
+  };
+
+  const chooseTone = (value) => {
+    setTone(value);
+    setCustomTone("");
+  };
+
+  const addEvent = ({ title, type, date, notes }) => {
+    const newEvent = {
+      id: `custom-${Date.now()}`,
+      title,
+      type,
+      date,
+      time: "",
+      location: "",
+      notes,
+      angle: notes || title,
+      theme: title,
+    };
+    const next = [newEvent, ...customEvents];
+    setCustomEvents(next);
+    try {
+      localStorage.setItem("larpedin-custom-events", JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    selectEvent(newEvent.id);
+    toast({ title: "Event added", description: title });
+  };
+
+  const generate = async () => {
+    setGenerating(true);
+    try {
+      const text = await generatePost({
+        event,
+        tone: customTone.trim() || tone,
+        industry,
+        platform,
+      });
+      setDraft(text);
+      setAiDraft(true);
+    } catch (err) {
+      toast({
+        title: "Could not write your post",
+        description: err?.message || "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const regenerate = () => generate();
+
+  // Reopens a saved draft with the event, tone and platform it was written for.
   const openSavedDraft = (saved) => {
-    const matchingEvent = EVENTS.find(
-      (item) => item.title === saved.eventTitle,
+    const matchingEvent = allEvents.find(
+      (item) => item.id === saved.eventId || item.title === saved.eventTitle,
     );
 
     if (matchingEvent) {
       setSelectedId(matchingEvent.id);
     }
 
-    setTone(saved.tone);
-    setPlatform(saved.platform);
+    if (TONES.some((item) => item.id === saved.tone)) {
+      chooseTone(saved.tone);
+    } else if (saved.tone) {
+      setCustomTone(saved.tone);
+    }
+    if (saved.platform) setPlatform(saved.platform);
+    setAiDraft(true); // keep the saved text instead of the template
     setDraft(saved.content);
   };
-
-  const regenerate = () => setVariant((value) => value + 1);
 
   const saveDraft = () => {
     const savedDraft = {
       id: `draft-${Date.now()}`,
       content: draft,
       platform,
-      tone,
+      tone: customTone.trim() || tone,
       eventId: event.id,
       eventTitle: event.title,
       savedAt: new Date().toISOString(),
@@ -103,17 +203,27 @@ export default function Content() {
             Signals
           </p>
           <SignalList
-            events={EVENTS}
+            events={allEvents}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={selectEvent}
           />
         </aside>
 
         <div className="space-y-3.5">
+          <PostSettings
+            industry={industry}
+            setIndustry={setIndustry}
+            customTone={customTone}
+            setCustomTone={setCustomTone}
+            onAddEvent={addEvent}
+            onGenerate={generate}
+            generating={generating}
+          />
+
           <PostComposer
             event={event}
             tone={tone}
-            setTone={setTone}
+            setTone={chooseTone}
             platform={platform}
             setPlatform={setPlatform}
             draft={draft}
@@ -158,7 +268,7 @@ export default function Content() {
 
                       <button
                         type="button"
-                        onClick={() => setDraft(saved.content)}
+                        onClick={() => openSavedDraft(saved)}
                         className="mt-3 text-xs font-medium text-primary hover:underline"
                       >
                         Open Draft
