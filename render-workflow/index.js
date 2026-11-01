@@ -1,73 +1,69 @@
-// LarpedIn headshot workflow, running on Render Workflows.
-//
-// Render's job here is reliability: it runs the headshots in parallel and
-// automatically retries any one that fails. The actual AI image is made by
-// the Base44 function "makeHeadshotImage" (Base44's built-in AI, no extra account).
+// LarpedIn headshot WORKFLOW (Render Workflow service, start command: npm start)
 //
 // generateHeadshots (main task)
 //   starts one renderOne task per headshot, all at the same time,
 //   then returns { images: [...] }
 // renderOne (small task)
-//   asks Base44 for one headshot. If it fails, Render retries just that one.
+//   asks Base44's built-in AI (Core.GenerateImage) to put the person in the outfit.
+//   (The phone then pastes the real face back on and adds the backdrop.)
+//   If it fails, Render automatically retries just that one.
 //
-// Env vars on the Render workflow service:
-//   BASE44_APP_URL    your live app's address, e.g. https://larpedin.base44.app
-//   LARPEDIN_SECRET   same password you put in Base44's secrets
+// Env vars on this Render service:
+//   BASE44_APP_ID   your Base44 app's ID (6ae7690b968888ad1ecb8786)
 
 import { task } from '@renderinc/sdk/workflows';
+import { createClient } from '@base44/sdk';
+
+function buildPrompt({ hasHair, clothingStyle }) {
+  // Reference image order: 1 selfie, 2 outfit, 3 hair (optional).
+  // The phone pastes the REAL face back on afterwards and swaps the backdrop,
+  // so the AI's only job is the clothes, with the framing kept identical.
+  return [
+    'Edit the FIRST reference image. Change ONLY the clothing.',
+    `Dress the person in the ${clothingStyle === 'female' ? "women's" : "men's"} outfit shown in the SECOND reference image, matching its color, fabric, lapels, shirt and tie. Fit it naturally to their neck, shoulders and posture with realistic folds. Ignore any person or face in the second image.`,
+    hasHair
+      ? 'Restyle the hair to exactly match the hair in the THIRD reference image (color, length, texture, parting and style). Use the third image only as a hair reference.'
+      : 'Keep the hair exactly as it is.',
+    'Keep the exact same camera framing, crop, zoom, head position, head size, head angle and pose as the first image, so the edited photo lines up perfectly with the original.',
+    'Keep the face completely unchanged. Do not retouch, smooth, slim or beautify anything.',
+    'Replace the background with a plain, evenly lit light grey studio wall.',
+    'Photorealistic. No text, no watermark, no extra people.',
+  ].join(' ');
+}
 
 const renderOne = task(
   {
     name: 'renderOne',
     retry: { maxRetries: 2, waitDurationMs: 2000, backoffScaling: 2 },
-    timeoutSeconds: 180,
+    timeoutSeconds: 240,
   },
-  async function renderOne(ctx, input) {
-    const appUrl = process.env.BASE44_APP_URL?.replace(/\/$/, '');
-    if (!appUrl || !process.env.LARPEDIN_SECRET) {
-      throw new Error('BASE44_APP_URL and LARPEDIN_SECRET must be set on Render');
-    }
+  async function renderOne(ctx, { imageUrls, prompt, token }) {
+    if (!process.env.BASE44_APP_ID) throw new Error('BASE44_APP_ID is not set on Render');
 
-    const res = await fetch(`${appUrl}/functions/makeHeadshotImage`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-larpedin-secret': process.env.LARPEDIN_SECRET,
-      },
-      body: JSON.stringify(input),
+    // Acts as the logged-in user, so it uses the app's normal Base44 AI credits.
+    const base44 = createClient({ appId: process.env.BASE44_APP_ID, token: token || undefined });
+    const { url } = await base44.integrations.Core.GenerateImage({
+      prompt,
+      existing_image_urls: imageUrls,
     });
-    const body = await res.json().catch(() => ({}));
 
-    if (!res.ok || !body.url) throw new Error(body.error || `Base44 returned ${res.status}`);
-    return body.url;
+    if (!url) throw new Error('Base44 returned no image'); // throwing = Render retries
+    return url;
   }
 );
 
 export const generateHeadshots = task(
   { name: 'generateHeadshots', timeoutSeconds: 600 },
   async function generateHeadshots(ctx, input) {
-    const {
-      selfie,
-      outfitImage,
-      backdropImage,
-      hairPhoto,
-      clothingStyle = 'male',
-      ratio = '4:5',
-      numImages = 2,
-      token,
-    } = input;
-
-    for (const [name, value] of Object.entries({ selfie, outfitImage, backdropImage })) {
-      if (!/^(https?:\/\/|data:image\/)/.test(value || '')) {
-        throw new Error(`${name} must be an https URL or image data URL`);
-      }
+    const { selfie, outfitImage, hairPhoto, clothingStyle = 'male', numImages = 1, token } = input;
+    for (const [name, value] of Object.entries({ selfie, outfitImage })) {
+      if (!/^https?:\/\//.test(value || '')) throw new Error(`${name} must be an https URL`);
     }
 
-    if (hairPhoto && !/^(https?:\/\/|data:image\/)/.test(hairPhoto)) {
-      throw new Error('hairPhoto must be an https URL or image data URL');
-    }
+    const imageUrls = [selfie, outfitImage];
+    if (hairPhoto) imageUrls.push(hairPhoto);
 
-    const job = { selfie, outfitImage, backdropImage, hairPhoto, clothingStyle, ratio, token };
+    const job = { imageUrls, prompt: buildPrompt({ hasHair: Boolean(hairPhoto), clothingStyle }), token };
     const count = Math.min(Math.max(Number(numImages) || 1, 1), 4);
 
     // Run them side by side instead of one after another.

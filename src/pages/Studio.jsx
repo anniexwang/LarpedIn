@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download, Sparkles, Scissors, X } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
 import StudioStage from '@/components/studio/StudioStage';
@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { OUTFITS_BY_STYLE, BACKDROPS } from '@/lib/mockData';
 import { fileToDataUrl } from '@/lib/imageData';
 import { generateHeadshots } from '@/lib/headshotApi';
+import { compositeHeadshot, preloadFaceTools } from '@/lib/faceComposite';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -31,6 +32,11 @@ export default function Studio() {
   const { toast } = useToast();
 
   const result = results[picked];
+
+  // Download the face tools in the background so Generate is quicker.
+  useEffect(() => {
+    preloadFaceTools();
+  }, []);
 
   // Any change to the inputs clears the old result so the preview is live again.
   const changeInput = (setter) => (value) => {
@@ -72,16 +78,30 @@ export default function Studio() {
     }
     setLoading(true);
     try {
-      const images = await generateHeadshots({
+      // 1. AI puts you in the outfit (on Render).
+      const aiImages = await generateHeadshots({
         selfie: photo,
         outfitImage: outfit.image,
         clothingStyle,
-        backdropImage: backdrop.image,
         hairPhoto,
-        ratio,
-        numImages: 2,
+        numImages: 1,
       });
-      setResults(images);
+      // 2. On the phone: paste your real face back on and add the backdrop.
+      const finals = await Promise.all(
+        aiImages.map((generated) =>
+          compositeHeadshot({
+            selfie: photo,
+            generated,
+            backdrop: backdrop.image,
+            ratio,
+            keepOriginalHair: !hairPhoto,
+          }).catch((err) => {
+            console.warn('Face paste-back failed, showing the AI image instead', err);
+            return generated;
+          })
+        )
+      );
+      setResults(finals);
       setPicked(0);
     } catch (err) {
       toast({
@@ -98,7 +118,7 @@ export default function Studio() {
     const blob = await (await fetch(result)).blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'larpedin-headshot.png';
+    a.download = 'larpedin-headshot.jpg';
     a.click();
     URL.revokeObjectURL(a.href);
   };

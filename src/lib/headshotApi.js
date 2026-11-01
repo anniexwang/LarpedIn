@@ -18,7 +18,7 @@ async function toPublicUrl(src) {
 }
 
 // Asks Render for the AI outfit image(s). The backdrop is added later on the phone.
-export async function generateHeadshots({ selfie, outfitImage, hairPhoto, numImages = 1 }) {
+export async function generateHeadshots({ selfie, outfitImage, clothingStyle, hairPhoto, numImages = 1 }) {
   const [selfieUrl, outfitUrl, hairUrl] = await Promise.all([selfie, outfitImage, hairPhoto].map(toPublicUrl));
 
   const res = await fetch(`${HEADSHOT_API_URL}/headshot`, {
@@ -28,6 +28,7 @@ export async function generateHeadshots({ selfie, outfitImage, hairPhoto, numIma
       selfie: selfieUrl,
       outfitImage: outfitUrl,
       hairPhoto: hairUrl,
+      clothingStyle,
       numImages,
       token: getAccessToken(), // lets Render use Base44's AI as you
     }),
