@@ -28,9 +28,8 @@ export default function Content() {
     setDraft(composeDraft(event, tone, variant, platform));
   }, [event, tone, variant, platform]);
 
+  const regenerate = () => setVariant((value) => value + 1);
   
-  
-
   const addToQueue = () => {
     const title = draft.split('\n')[0].slice(0, 64);
     setQueue((posts) => [
@@ -43,7 +42,8 @@ export default function Content() {
       },
       ...posts,
     ]);
-    toast({ title: 'Added to your queue', description: `${platform} · ${formatEventDate(event.date)}` });
+    toast({ title: 'Added to your queue', 
+    description: `${platform} · ${formatEventDate(event.date)}` });
   };
 
   const removeFromQueue = (id) => setQueue((posts) => posts.filter((post) => post.id !== id));
@@ -75,6 +75,7 @@ export default function Content() {
             setDraft={setDraft}
             onRegenerate={regenerate}
             onQueue={addToQueue}
+            onSaveDraft={saveDraft}
           />
 
           <section className="rounded-[1.5rem] border border-border bg-card">

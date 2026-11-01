@@ -13,6 +13,7 @@ export default function PostComposer({
   setDraft,
   onRegenerate,
   onQueue,
+  onSaveDraft,
 }) {
   const words = draft.trim().split(/\s+/).filter(Boolean).length;
 
