@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { appParams } from '@/lib/app-params';
 
 const AuthContext = createContext();
 
@@ -25,16 +24,6 @@ export const AuthProvider = ({ children }) => {
       try {
         const publicSettings = await base44.app.getPublicSettings();
         setAppPublicSettings(publicSettings);
-        
-        // If we got the app public settings successfully, check if user is authenticated
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-          setAuthChecked(true);
-        }
-        setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
         
@@ -63,9 +52,14 @@ export const AuthProvider = ({ children }) => {
             message: appError.message || 'Failed to load app'
           });
         }
+      } finally {
         setIsLoadingPublicSettings(false);
-        setIsLoadingAuth(false);
       }
+
+      // The SDK can restore a session from storage or cookies after this module
+      // has been initialized, so an appParams.token snapshot is not a reliable
+      // indication of whether the user is signed in.
+      await checkUserAuth();
     } catch (error) {
       console.error('Unexpected error:', error);
       setAuthError({
@@ -84,6 +78,7 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+      setAuthError(null);
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
