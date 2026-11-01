@@ -1,6 +1,14 @@
 import { format, parseISO } from 'date-fns';
+import blueBackdropImage from '@/assets/images/blue-backdrop.png';
+import blurBackdropImage from '@/assets/images/blur-backdrop.jpg';
+import cityBlurBackdropImage from '@/assets/images/city-blur-backdrop.jpeg';
+import femaleBlackSuitImage from '@/assets/images/female-black-suit.png';
+import femaleNavyBlueImage from '@/assets/images/female-navy-blue.png';
+import femaleWhiteDressShirtImage from '@/assets/images/female-white-dress-shirt.png';
+import greyBackdropImage from '@/assets/images/grey-backdrop.jpg';
+import officeBackdropImage from '@/assets/images/office-backdrop.jpg';
 
-export const OUTFITS = [
+export const MALE_OUTFITS = [
   {
     id: 'navy',
     name: 'Midnight Navy',
@@ -24,27 +32,64 @@ export const OUTFITS = [
   },
 ];
 
+export const FEMALE_OUTFITS = [
+  {
+    id: 'female-navy',
+    name: 'Midnight Navy',
+    detail: 'Tailored blazer · wide-leg trouser',
+    image: femaleNavyBlueImage,
+  },
+  {
+    id: 'female-charcoal',
+    name: 'Black Tailored Suit',
+    detail: 'Single blazer · white button-down',
+    image: femaleBlackSuitImage,
+  },
+  {
+    id: 'female-ivory',
+    name: 'White Dress Shirt',
+    detail: 'Point collar · button-front',
+    image: femaleWhiteDressShirtImage,
+  },
+];
+
+export const OUTFITS_BY_STYLE = {
+  male: MALE_OUTFITS,
+  female: FEMALE_OUTFITS,
+};
+
+export const OUTFITS = MALE_OUTFITS;
+
 export const BACKDROPS = [
   {
     id: 'studio',
     name: 'Studio Grey',
     detail: 'Seamless paper',
-    image:
-      'https://media.base44.com/images/public/6ae7690b968888ad1ecb8786/bfa0f0709_generated_image.png',
+    image: greyBackdropImage,
   },
   {
-    id: 'sand',
-    name: 'Warm Sand',
-    detail: 'Microcement wall',
-    image:
-      'https://media.base44.com/images/public/6ae7690b968888ad1ecb8786/db4d1c8ef_generated_image.png',
+    id: 'blue',
+    name: 'Blue Backdrop',
+    detail: 'Soft blue studio',
+    image: blueBackdropImage,
   },
   {
-    id: 'emerald',
-    name: 'Emerald Drape',
-    detail: 'Velvet · low light',
-    image:
-      'https://media.base44.com/images/public/6ae7690b968888ad1ecb8786/f8974f195_generated_image.png',
+    id: 'city-blur',
+    name: 'City Blur',
+    detail: 'Soft-focus skyline',
+    image: cityBlurBackdropImage,
+  },
+  {
+    id: 'hallway-blur',
+    name: 'Bright Hallway',
+    detail: 'Soft-focus corridor',
+    image: blurBackdropImage,
+  },
+  {
+    id: 'office',
+    name: 'Modern Office',
+    detail: 'Glass-walled workspace',
+    image: officeBackdropImage,
   },
 ];
 

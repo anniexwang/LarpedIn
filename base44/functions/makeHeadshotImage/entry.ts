@@ -4,7 +4,7 @@
 // Base44 secret needed:
 //   LARPEDIN_SECRET   any long random password you make up. Must match the one on Render.
 //
-// Input (JSON):  { selfie, outfitImage, backdropImage, hairPhoto?, ratio? }
+// Input (JSON):  { selfie, outfitImage, backdropImage, hairPhoto?, clothingStyle?, ratio? }
 // Output (JSON): { url } or { error }
 
 import { createClientFromRequest } from "npm:@base44/sdk";
@@ -12,7 +12,7 @@ import { createClientFromRequest } from "npm:@base44/sdk";
 const MODEL = "nano_banana_2_1"; // Google's Nano Banana, through Base44
 const RATIOS = ["4:5", "1:1", "16:9"];
 
-function buildPrompt(hasHair: boolean) {
+function buildPrompt(hasHair: boolean, clothingStyle: string) {
   // Image order: 1 selfie, 2 outfit, 3 backdrop, 4 hair (optional)
   return [
     "Create a professional LinkedIn headshot of the person in image 1.",
@@ -21,7 +21,7 @@ function buildPrompt(hasHair: boolean) {
     hasHair
       ? "Give the person the exact hair from image 4 (same color, length, texture, parting and style), blended naturally at the hairline. Use image 4 only as a hair reference and ignore everything else in it."
       : "Keep the person's hair exactly as it is in image 1.",
-    "Dress the person in the outfit shown in image 2, matching its color, fabric, lapels and shirt. Fit it naturally to their neck, shoulders and posture. Ignore any person or face in image 2.",
+    `Dress the person in the outfit shown in image 2, matching its color, fabric, lapels and shirt, with a ${clothingStyle === "female" ? "feminine" : "masculine"} clothing fit and styling. Fit it naturally to their neck, shoulders and posture. Ignore any person or face in image 2.`,
     "Place them in front of the backdrop shown in image 3, softly out of focus.",
     "Soft, even studio lighting that matches the face. Head and shoulders framing, centered, eye level, photorealistic, sharp focus on the face.",
     "No text, no watermark, no extra people, no accessories that are not in image 1.",
@@ -36,7 +36,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Not allowed" }, { status: 401 });
     }
 
-    const { selfie, outfitImage, backdropImage, hairPhoto, ratio = "4:5" } = await req.json();
+    const {
+      selfie,
+      outfitImage,
+      backdropImage,
+      hairPhoto,
+      clothingStyle = "male",
+      ratio = "4:5",
+    } = await req.json();
     if (!selfie || !outfitImage || !backdropImage) {
       return Response.json({ error: "selfie, outfitImage and backdropImage are required" }, { status: 400 });
     }
@@ -52,7 +59,7 @@ Deno.serve(async (req) => {
       headers: { ...headers, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
-        prompt: buildPrompt(Boolean(hairPhoto)),
+        prompt: buildPrompt(Boolean(hairPhoto), clothingStyle),
         reference_image_urls: references, // https URLs or data: URLs both work
         aspect_ratio: RATIOS.includes(ratio) ? ratio : "4:5",
         n: 1,

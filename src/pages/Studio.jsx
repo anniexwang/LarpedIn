@@ -5,7 +5,7 @@ import StudioStage from '@/components/studio/StudioStage';
 import OptionGrid from '@/components/studio/OptionGrid';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { OUTFITS, BACKDROPS } from '@/lib/mockData';
+import { OUTFITS_BY_STYLE, BACKDROPS } from '@/lib/mockData';
 import { fileToDataUrl } from '@/lib/imageData';
 import { generateHeadshots } from '@/lib/headshotApi';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,8 @@ const TABS = [
 export default function Studio() {
   const [photo, setPhoto] = useState(null);
   const [hairPhoto, setHairPhoto] = useState(null);
-  const [outfit, setOutfit] = useState(OUTFITS[1]);
+  const [outfit, setOutfit] = useState(OUTFITS_BY_STYLE.male[1]);
+  const [clothingStyle, setClothingStyle] = useState('male');
   const [backdrop, setBackdrop] = useState(BACKDROPS[0]);
   const [ratio, setRatio] = useState('4:5');
   const [tab, setTab] = useState('outfits');
@@ -34,6 +35,12 @@ export default function Studio() {
   // Any change to the inputs clears the old result so the preview is live again.
   const changeInput = (setter) => (value) => {
     setter(value);
+    setResults([]);
+  };
+
+  const changeClothingStyle = (style) => {
+    setClothingStyle(style);
+    setOutfit(OUTFITS_BY_STYLE[style][0]);
     setResults([]);
   };
 
@@ -68,6 +75,7 @@ export default function Studio() {
       const images = await generateHeadshots({
         selfie: photo,
         outfitImage: outfit.image,
+        clothingStyle,
         backdropImage: backdrop.image,
         hairPhoto,
         ratio,
@@ -185,13 +193,39 @@ export default function Studio() {
           </div>
 
           {tab === 'outfits' ? (
-            <OptionGrid
-              options={[...OUTFITS, ...myOutfits]}
-              selectedId={outfit.id}
-              onSelect={changeInput(setOutfit)}
-              onUpload={(file) => addUpload(file, setMyOutfits, changeInput(setOutfit))}
-              uploadLabel="Upload your own outfit"
-            />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[11.5px] font-medium text-foreground">Clothing style</span>
+                <div className="flex rounded-full border border-border bg-card p-1" role="group" aria-label="Clothing style">
+                  {[
+                    { id: 'male', label: 'Male' },
+                    { id: 'female', label: 'Female' },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => changeClothingStyle(option.id)}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-[11px] font-medium transition-colors',
+                        clothingStyle === option.id
+                          ? 'bg-foreground text-background'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      aria-pressed={clothingStyle === option.id}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <OptionGrid
+                options={[...OUTFITS_BY_STYLE[clothingStyle], ...myOutfits]}
+                selectedId={outfit.id}
+                onSelect={changeInput(setOutfit)}
+                onUpload={(file) => addUpload(file, setMyOutfits, changeInput(setOutfit))}
+                uploadLabel="Upload your own outfit"
+              />
+            </div>
           ) : (
             <OptionGrid
               options={[...BACKDROPS, ...myBackdrops]}
