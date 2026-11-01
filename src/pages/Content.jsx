@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import SignalList from '@/components/content/SignalList';
 import PostComposer from '@/components/content/PostComposer';
@@ -45,7 +45,7 @@ export default function Content() {
       <PageHeader
         eyebrow="Content"
         title="Say the thing."
-        description="Pick a signal from your calendar, choose a tone, and shape a post that sounds like you wrote it — because you did."
+        description={"Pick a signal from your calendar, choose a tone, and shape a post that sounds like you wrote it — because you did."}
       />
 
       <div className="grid gap-3.5 pt-6 lg:grid-cols-[264px_minmax(0,1fr)]">

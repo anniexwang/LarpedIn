@@ -4,14 +4,23 @@ import { appParams } from '@/lib/app-params';
 
 const AuthContext = createContext();
 
+const getStoredUser = () => {
+  try {
+    const stored = localStorage.getItem('auth_user');
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(() => getStoredUser());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getStoredUser()));
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState(null);
 
   useEffect(() => {
     checkAppState();
@@ -30,16 +39,22 @@ export const AuthProvider = ({ children }) => {
         if (appParams.token) {
           await checkUserAuth();
         } else {
+          const stored = getStoredUser();
+          if (stored) {
+            setUser(stored);
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+          }
           setIsLoadingAuth(false);
-          setIsAuthenticated(false);
           setAuthChecked(true);
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
-        console.error('App state check failed:', appError);
+        console.warn('Base44 app backend check unavailable; using local auth session:', appError);
         
-        // Handle app-level errors
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
+        // Handle app-level errors if running on Base44 cloud
+        if (appError?.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
           if (reason === 'auth_required') {
             setAuthError({
@@ -58,28 +73,37 @@ export const AuthProvider = ({ children }) => {
             });
           }
         } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
+          // If in local dev or backend is offline, preserve local/Google OAuth session
+          const stored = getStoredUser();
+          if (stored) {
+            setUser(stored);
+            setIsAuthenticated(true);
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
         }
         setIsLoadingPublicSettings(false);
         setIsLoadingAuth(false);
+        setAuthChecked(true);
       }
     } catch (error) {
-      console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
-      });
+      console.error('Unexpected auth check error:', error);
+      const stored = getStoredUser();
+      if (stored) {
+        setUser(stored);
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
+      setAuthChecked(true);
     }
   };
 
   const checkUserAuth = async () => {
     try {
-      // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
@@ -88,41 +112,54 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
     } catch (error) {
       console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
-      setIsAuthenticated(false);
-      setAuthChecked(true);
-      
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
+      const stored = getStoredUser();
+      if (stored) {
+        setUser(stored);
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+        if (error.status === 401 || error.status === 403) {
+          setAuthError({
+            type: 'auth_required',
+            message: 'Authentication required'
+          });
+        }
       }
+      setIsLoadingAuth(false);
+      setAuthChecked(true);
     }
   };
 
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('google_access_token');
+    localStorage.removeItem('calendar_access_token');
+    localStorage.removeItem('calendar_events');
     
-    if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
+    try {
+      if (shouldRedirect) {
+        base44.auth.logout(window.location.origin + '/login');
+      } else {
+        base44.auth.logout();
+      }
+    } catch {
+      if (shouldRedirect) {
+        window.location.href = '/login';
+      }
     }
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+    window.location.href = '/login';
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
+      setUser,
+      setIsAuthenticated,
       isAuthenticated, 
       isLoadingAuth,
       isLoadingPublicSettings,

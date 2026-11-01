@@ -5,17 +5,22 @@ import ConnectedPanel from '@/components/calendar/ConnectedPanel';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { EVENTS } from '@/lib/mockData';
+import { redirectToGoogleAuth } from '@/lib/googleAuth';
 
 export default function CalendarPage() {
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(() => {
+    return Boolean(
+      localStorage.getItem('google_access_token') ||
+      localStorage.getItem('calendar_access_token')
+    );
+  });
   const [prefs, setPrefs] = useState({ suggest: true, remind: true, linkedin: false });
   const { toast } = useToast();
   const { user } = useAuth();
   const account = user?.email || 'you@larpedin.com';
 
   const connect = () => {
-    setConnected(true);
-    toast({ title: 'Google Calendar connected', description: 'Read-only access · 5 events this fortnight.' });
+    redirectToGoogleAuth('/calendar');
   };
 
   const toggle = (id) => {
@@ -23,6 +28,9 @@ export default function CalendarPage() {
   };
 
   const disconnect = () => {
+    localStorage.removeItem('google_access_token');
+    localStorage.removeItem('calendar_access_token');
+    localStorage.removeItem('calendar_events');
     setConnected(false);
     toast({ title: 'Calendar disconnected', description: 'LarpedIn can no longer read your events.' });
   };

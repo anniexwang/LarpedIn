@@ -1,4 +1,12 @@
-export default function PageHeader({ eyebrow, title, description, action }) {
+/**
+ * @param {Object} props
+ * @param {React.ReactNode} [props.eyebrow]
+ * @param {React.ReactNode} props.title
+ * @param {React.ReactNode} [props.description]
+ * @param {React.ReactNode} [props.action]
+ * 
+ */
+export default function PageHeader({ eyebrow = null, title, description = null, action = null }) {
   return (
     <div className="flex flex-col gap-6 pb-7 pt-8 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
