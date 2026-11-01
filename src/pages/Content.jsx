@@ -30,6 +30,20 @@ export default function Content() {
     setDraft(composeDraft(event, tone, variant, platform));
   }, [event, tone, variant, platform]);
 
+  const openSavedDraft = (saved) => {
+    const matchingEvent = EVENTS.find(
+      (item) => item.title === saved.eventTitle,
+    );
+
+    if (matchingEvent) {
+      setSelectedId(matchingEvent.id);
+    }
+
+    setTone(saved.tone);
+    setPlatform(saved.platform);
+    setDraft(saved.content);
+  };
+
   const regenerate = () => setVariant((value) => value + 1);
 
   const saveDraft = () => {
