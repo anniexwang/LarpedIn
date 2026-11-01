@@ -34,7 +34,7 @@ export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, s
           )}
 
           {loading && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-[#010736]/60 text-white backdrop-blur-sm">
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-[#03045e]/60 text-[#caf0f8] backdrop-blur-sm">
               <Loader2 className="h-6 w-6 animate-spin" />
               <span className="text-[12px] font-medium">Suiting you up... (~20s)</span>
             </div>
@@ -46,10 +46,10 @@ export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, s
                 <Image src={photo} alt="Your portrait" fittingType="fill" className="h-full w-full" />
               </div>
             ) : (
-              <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[10px] border border-dashed border-white/45 bg-[#010736]/35 text-center text-white backdrop-blur-[2px] transition-colors hover:bg-[#010736]/50">
+              <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[10px] border border-dashed border-[#caf0f8]/45 bg-[#03045e]/35 text-center text-[#caf0f8] backdrop-blur-[2px] transition-colors hover:bg-[#03045e]/50">
                 <Camera className="h-5 w-5" strokeWidth={1.5} />
                 <span className="text-[13px] font-semibold">Add a photo to begin</span>
-                <span className="max-w-[24ch] text-[11px] leading-relaxed text-white/70">
+                <span className="max-w-[24ch] text-[11px] leading-relaxed text-[#caf0f8]/70">
                   Take one now, or upload from your library
                 </span>
                 <input type="file" accept="image/*" capture="user" className="hidden" onChange={readFile} />
@@ -58,10 +58,10 @@ export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, s
           </div>
 
           <div className="pointer-events-none absolute inset-x-2.5 bottom-2.5 flex items-center justify-between gap-2">
-            <span className="rounded-full bg-[#010736]/70 px-2.5 py-1 text-[9.5px] font-medium uppercase tracking-[0.12em] text-white/90 backdrop-blur">
+            <span className="rounded-full bg-[#03045e]/70 px-2.5 py-1 text-[9.5px] font-medium uppercase tracking-[0.12em] text-[#caf0f8]/90 backdrop-blur">
               {outfit.name}
             </span>
-            <span className="rounded-full bg-[#010736]/70 px-2.5 py-1 text-[9.5px] font-medium uppercase tracking-[0.12em] text-white/90 backdrop-blur">
+            <span className="rounded-full bg-[#03045e]/70 px-2.5 py-1 text-[9.5px] font-medium uppercase tracking-[0.12em] text-[#caf0f8]/90 backdrop-blur">
               {backdrop.name} · {ratio}
             </span>
           </div>
