@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
-import { Camera, LogOut } from 'lucide-react';
-import Brand from '@/components/common/Brand';
-import ThemeToggle from '@/components/common/ThemeToggle';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Camera, LogOut } from "lucide-react";
+import Brand from "@/components/common/Brand";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -9,12 +10,20 @@ import {
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { useAuth } from '@/lib/AuthContext';
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function ShellTopbar() {
   const { user, logout } = useAuth();
-  const name = user?.full_name || user?.email || 'Your account';
+  const [textScale, setTextScale] = useState(() => {
+    useEffect(() => {
+      document.documentElement.style.setProperty("--text-scale", textScale);
+      localStorage.setItem("larpedin-text-scale", String(textScale));
+    }, [textScale]);
+    const saved = Number(localStorage.getItem("larpedin-text-scale"));
+    return [0.9, 1, 1.1, 1.2].includes(saved) ? saved : 1;
+  });
+  const name = user?.full_name || user?.email || "Your account";
   const initials = name.trim().slice(0, 1).toUpperCase();
 
   return (
@@ -51,14 +60,20 @@ export default function ShellTopbar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
-                <span className="block truncate text-[12px] font-medium">{name}</span>
+                <span className="block truncate text-[12px] font-medium">
+                  {name}
+                </span>
                 <span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">
-                  {user?.email || ''}
+                  {user?.email || ""}
                 </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-[12px]" onSelect={() => logout()}>
-                <LogOut className="mr-2 h-3.5 w-3.5" strokeWidth={1.75} /> Sign out
+              <DropdownMenuItem
+                className="text-[12px]"
+                onSelect={() => logout()}
+              >
+                <LogOut className="mr-2 h-3.5 w-3.5" strokeWidth={1.75} /> Sign
+                out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

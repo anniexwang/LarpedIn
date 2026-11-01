@@ -91,6 +91,7 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: calc(100% * var(--text-scale, 1));
   }
 
   body {
