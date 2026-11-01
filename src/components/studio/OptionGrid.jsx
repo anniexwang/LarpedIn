@@ -19,7 +19,7 @@ export default function OptionGrid({ options, selectedId, onSelect, onUpload, up
                 : 'border-border hover:border-foreground/25'
             )}
           >
-            <div className="aspect-[4/5] w-full overflow-hidden bg-secondary">
+            <div className="aspect-[4/5] w-full overflow-hidden bg-white">
               <Image
                 src={option.image}
                 alt={option.name}

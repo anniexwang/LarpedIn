@@ -12,6 +12,7 @@
 //   const res = await base44.functions.invoke("generatePortrait", {
 //     selfie,          // required. data URL or https URL
 //     outfitImage,     // required. https URL or data URL
+//     clothingStyle,   // optional. "male" | "female"
 //     backdropImage,   // required. https URL or data URL
 //     hairPhoto,       // optional. data URL
 //     ratio,           // optional. "4:5" | "1:1" | "16:9"
