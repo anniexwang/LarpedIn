@@ -41,8 +41,32 @@ function readJson(req) {
   });
 }
 
+// GET /image?url=...  Re-serves a web image with permission for the browser to
+// read its pixels (needed to paste the real face back on in the Studio page).
+async function proxyImage(req, res) {
+  try {
+    const target = new URL(req.url, 'http://local').searchParams.get('url') || '';
+    if (!/^https:\/\//.test(target)) return send(res, 400, { error: 'url must be https' });
+    const upstream = await fetch(target);
+    const type = upstream.headers.get('content-type') || '';
+    if (!upstream.ok) return send(res, 502, { error: `Image fetch failed (${upstream.status})` });
+    if (!type.startsWith('image/')) return send(res, 415, { error: 'Not an image' });
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    if (buf.length > 15_000_000) return send(res, 413, { error: 'Image too large' });
+    res.writeHead(200, {
+      'Content-Type': type,
+      'Access-Control-Allow-Origin': ORIGIN,
+      'Cache-Control': 'public, max-age=3600',
+    });
+    res.end(buf);
+  } catch (err) {
+    return send(res, 500, { error: String(err?.message ?? err) });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
+  if (req.method === 'GET' && req.url.startsWith('/image')) return proxyImage(req, res);
   if (req.method === 'GET') return send(res, 200, { ok: true, service: 'larpedin-headshots-api' });
   if (req.method !== 'POST' || !req.url.startsWith('/headshot')) return send(res, 404, { error: 'Not found' });
 
