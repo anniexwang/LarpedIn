@@ -1,0 +1,6 @@
+{
+  "name": "LarpedIn AI",
+  "description": "Intelligent LinkedIn content assistant helping students, job seekers, and professionals craft engaging, authentic posts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
