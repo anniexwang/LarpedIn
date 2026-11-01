@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Camera, ArrowRight } from 'lucide-react';
 import Brand from '@/components/common/Brand';
+import ThemeToggle from '@/components/common/ThemeToggle';
 import { Image } from '@/components/ui/image';
 import { SAMPLE_PORTRAIT } from '@/lib/mockData';
 
@@ -14,12 +15,15 @@ export default function Landing() {
 
       <header className="relative mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
         <Brand tone="light" />
-        <Link
-          to="/login?returnTo=/overview"
-          className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Sign in
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link
+            to="/login?returnTo=/overview"
+            className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Sign in
+          </Link>
+        </div>
       </header>
 
       <main className="relative mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-16 pt-6 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pt-12">

@@ -1,8 +1,12 @@
 import React from 'react';
+import ThemeToggle from '@/components/common/ThemeToggle';
 
 const UserNotRegisteredError = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-slate-50">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-slate-50">
+      <div className="absolute right-5 top-5">
+        <ThemeToggle />
+      </div>
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg border border-slate-100">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-full bg-orange-100">

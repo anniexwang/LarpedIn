@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Moon, Sun, Camera, LogOut } from 'lucide-react';
+import { Camera, LogOut } from 'lucide-react';
 import Brand from '@/components/common/Brand';
+import ThemeToggle from '@/components/common/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -9,11 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { useTheme } from '@/lib/theme';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function ShellTopbar() {
-  const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const name = user?.full_name || user?.email || 'Your account';
   const initials = name.trim().slice(0, 1).toUpperCase();
@@ -35,14 +34,7 @@ export default function ShellTopbar() {
           >
             <Camera className="h-3.5 w-3.5" strokeWidth={1.75} /> New portrait
           </Link>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle dark mode"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-          </button>
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
