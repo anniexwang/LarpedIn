@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { removeAccessToken } from '@base44/sdk';
 import { base44 } from '@/api/base44Client';
+import { appParams } from '@/lib/app-params';
 
 const AuthContext = createContext();
 
@@ -97,16 +99,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    
-    if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
+    removeAccessToken();
+    removeAccessToken({ storageKey: 'token' });
+
+    if (!shouldRedirect || typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const logoutUrl = new URL('/api/apps/auth/logout', appParams.appBaseUrl || window.location.origin);
+      logoutUrl.searchParams.set('from_url', window.location.origin + '/');
+      await fetch(logoutUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'X-App-Id': String(appParams.appId || ''),
+        },
+      });
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    } finally {
+      window.location.replace('/');
     }
   };
 
