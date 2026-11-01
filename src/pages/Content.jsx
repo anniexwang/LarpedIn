@@ -29,6 +29,23 @@ export default function Content() {
   }, [event, tone, variant, platform]);
 
   const regenerate = () => setVariant((value) => value + 1);
+
+  const saveDraft = () => {
+    const savedDraft = {
+      id: `draft-${Date.now()}`,
+      content: draft,
+      platform,
+      tone,
+      eventId: event.id,
+      eventTitle: event.title,
+      savedAt: new Date().toISOString(),
+    };
+    const nextDrafts = [savedDraft, ...savedDrafts];
+
+    setSavedDrafts(nextDrafts);
+    localStorage.setItem('larpedin-drafts', JSON.stringify(nextDrafts));
+    toast({ title: 'Draft saved', description: `${platform} · ${event.title}` });
+  };
   
   const addToQueue = () => {
     const title = draft.split('\n')[0].slice(0, 64);
