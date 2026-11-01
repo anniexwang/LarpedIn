@@ -1,4 +1,3 @@
-import { RefreshCw, Send } from "lucide-react";
 import { RefreshCw, Send, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TONES, PLATFORMS, formatEventDate } from "@/lib/mockData";
