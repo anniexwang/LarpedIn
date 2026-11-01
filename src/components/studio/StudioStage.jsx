@@ -30,11 +30,11 @@ export default function StudioStage({ photo, onPhoto, outfit, backdrop, ratio, s
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
 
           {result && (
-            <img src={result} alt="Your generated headshot" className="absolute inset-0 z-10 h-full w-full object-cover" />
+            <img src={result} alt="Your generated headshot" className="absolute inset-0 h-full w-full object-cover" />
           )}
 
           {loading && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-[#03045e]/60 text-[#caf0f8] backdrop-blur-sm">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[#03045e]/60 text-[#caf0f8] backdrop-blur-sm">
               <Loader2 className="h-6 w-6 animate-spin" />
               <span className="text-[12px] font-medium">Suiting you up... (up to a minute)</span>
             </div>
