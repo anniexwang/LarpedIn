@@ -1,5 +1,6 @@
-// generatePortrait: the app calls this, this hands the job to the Render workflow.
-// The actual headshot logic (prompt + AI model + retries) lives in /render-workflow/index.js.
+// generatePortrait: the Studio page calls this. It hands the job to the Render workflow
+// (/render-workflow/index.js), which makes the headshots in parallel with retries by calling
+// the makeHeadshotImage function, which uses Base44's built-in AI.
 //
 // Base44 secrets needed:
 //   RENDER_API_KEY        from Render dashboard > Account settings > API keys

@@ -1,49 +1,20 @@
-// LarpedIn headshot workflow, deployed on Render Workflows.
+// LarpedIn headshot workflow, running on Render Workflows.
 //
-// generateHeadshots (parent task)
-//   1. uploads the photos to fal storage
-//   2. fans out one renderOne task per headshot, in parallel
-//   3. returns { images: [...] }
-// renderOne (child task)
-//   calls the AI model once. If it fails, Render retries just that one.
+// Render's job here is reliability: it runs the headshots in parallel and
+// automatically retries any one that fails. The actual AI image is made by
+// the Base44 function "makeHeadshotImage" (Base44's built-in AI, no extra account).
 //
-// Env var on the Render workflow service: FAL_KEY
+// generateHeadshots (main task)
+//   starts one renderOne task per headshot, all at the same time,
+//   then returns { images: [...] }
+// renderOne (small task)
+//   asks Base44 for one headshot. If it fails, Render retries just that one.
+//
+// Env vars on the Render workflow service:
+//   BASE44_APP_URL    your live app's address, e.g. https://larpedin.base44.app
+//   LARPEDIN_SECRET   same password you put in Base44's secrets
 
 import { task } from '@renderinc/sdk/workflows';
-import { fal } from '@fal-ai/client';
-
-// Swap to 'fal-ai/nano-banana/edit' for cheaper/faster testing.
-const MODEL = 'fal-ai/nano-banana-2/edit';
-const RATIOS = ['4:5', '1:1', '16:9'];
-
-function buildPrompt({ hasHair }) {
-  // Image order: 1 selfie, 2 outfit, 3 backdrop, 4 hair (optional)
-  return [
-    'Create a professional LinkedIn headshot of the person in image 1.',
-    "Keep the person's face exactly as it is in image 1: same facial features, face shape, skin tone, skin texture, eyes, expression, facial hair, glasses, age and head angle.",
-    'Do not beautify, retouch, slim, smooth or change the face or identity in any way.',
-    hasHair
-      ? 'Give the person the exact hair from image 4 (same color, length, texture, parting and style), blended naturally at the hairline. Use image 4 only as a hair reference and ignore everything else in it.'
-      : "Keep the person's hair exactly as it is in image 1.",
-    'Dress the person in the outfit shown in image 2, matching its color, fabric, lapels and shirt. Fit it naturally to their neck, shoulders and posture. Ignore any person or face in image 2.',
-    'Place them in front of the backdrop shown in image 3, softly out of focus.',
-    'Soft, even studio lighting that matches the face. Head and shoulders framing, centered, eye level, photorealistic, sharp focus on the face.',
-    'No text, no watermark, no extra people, no accessories that are not in image 1.',
-  ].join(' ');
-}
-
-function setupFal() {
-  if (!process.env.FAL_KEY) throw new Error('FAL_KEY is not set on the Render workflow');
-  fal.config({ credentials: process.env.FAL_KEY });
-}
-
-// https URLs pass through, data URLs get uploaded to fal storage.
-async function toFalUrl(src) {
-  if (/^https?:\/\//.test(src)) return src;
-  if (!src?.startsWith('data:')) throw new Error('Images must be https or data: URLs (not blob:)');
-  const blob = await (await fetch(src)).blob();
-  return fal.storage.upload(blob);
-}
 
 const renderOne = task(
   {
@@ -51,21 +22,25 @@ const renderOne = task(
     retry: { maxRetries: 2, waitDurationMs: 2000, backoffScaling: 2 },
     timeoutSeconds: 180,
   },
-  async function renderOne(ctx, { imageUrls, prompt, ratio, seed }) {
-    setupFal();
-    const result = await fal.subscribe(MODEL, {
-      input: {
-        prompt,
-        image_urls: imageUrls,
-        num_images: 1,
-        aspect_ratio: ratio,
-        output_format: 'png',
-        seed,
+  async function renderOne(ctx, input) {
+    const appUrl = process.env.BASE44_APP_URL?.replace(/\/$/, '');
+    if (!appUrl || !process.env.LARPEDIN_SECRET) {
+      throw new Error('BASE44_APP_URL and LARPEDIN_SECRET must be set on Render');
+    }
+
+    const res = await fetch(`${appUrl}/functions/makeHeadshotImage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-larpedin-secret': process.env.LARPEDIN_SECRET,
       },
+      body: JSON.stringify(input),
     });
-    const url = result.data?.images?.[0]?.url;
-    if (!url) throw new Error('Model returned no image'); // triggers a retry
-    return url;
+    const body = await res.json().catch(() => ({}));
+
+    // Throwing makes Render retry this task.
+    if (!res.ok || !body.url) throw new Error(body.error || `Base44 returned ${res.status}`);
+    return body.url;
   }
 );
 
@@ -76,26 +51,12 @@ export const generateHeadshots = task(
     if (!selfie || !outfitImage || !backdropImage) {
       throw new Error('selfie, outfitImage and backdropImage are required');
     }
-    setupFal();
 
-    // Order matters, the prompt refers to images by position.
-    const sources = [selfie, outfitImage, backdropImage];
-    if (hairPhoto) sources.push(hairPhoto);
-    const imageUrls = await Promise.all(sources.map(toFalUrl));
-
-    const payload = {
-      imageUrls,
-      prompt: buildPrompt({ hasHair: Boolean(hairPhoto) }),
-      ratio: RATIOS.includes(ratio) ? ratio : '4:5',
-    };
-
+    const job = { selfie, outfitImage, backdropImage, hairPhoto, ratio };
     const count = Math.min(Math.max(Number(numImages) || 1, 1), 4);
-    const images = await Promise.all(
-      Array.from({ length: count }, () =>
-        ctx.run(renderOne, { ...payload, seed: Math.floor(Math.random() * 1e9) })
-      )
-    );
 
+    // Run them side by side instead of one after another.
+    const images = await Promise.all(Array.from({ length: count }, () => ctx.run(renderOne, job)));
     return { images };
   }
 );
