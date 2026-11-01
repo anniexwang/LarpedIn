@@ -14,6 +14,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import OAuthCallback from '@/pages/OAuthCallback';
 import Landing from '@/pages/Landing';
 import Home from '@/pages/Home';
 import Studio from '@/pages/Studio';
@@ -50,6 +51,8 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/callback" element={<OAuthCallback />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
 
       <Route path="/" element={<Landing />} />
 
