@@ -1,7 +1,8 @@
-import { RefreshCw } from 'lucide-react';
+import React from 'react';
+import { RefreshCw, CalendarDays } from 'lucide-react';
 import EventRow from '@/components/calendar/EventRow';
 import { Switch } from '@/components/ui/switch';
-import { EVENTS } from '@/lib/mockData';
+import { getCalendarEvents } from '@/lib/calendarData';
 
 const PREFERENCES = [
   { id: 'suggest', label: 'Suggest posts from my events', hint: 'A draft appears within an hour of each event.' },
@@ -9,7 +10,9 @@ const PREFERENCES = [
   { id: 'linkedin', label: 'LinkedIn reminders', hint: 'Best posting windows for your network.' },
 ];
 
-export default function ConnectedPanel({ account, prefs, onToggle, onRefresh, onDisconnect }) {
+export default function ConnectedPanel({ account, prefs, onToggle, onRefresh, onDisconnect, events }) {
+  const displayEvents = events ?? getCalendarEvents();
+
   return (
     <div className="space-y-3.5">
       <section className="flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-border bg-card px-5 py-4">
@@ -28,14 +31,14 @@ export default function ConnectedPanel({ account, prefs, onToggle, onRefresh, on
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[10.5px] text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[10.5px] text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
         >
           <RefreshCw className="h-3 w-3" /> Sync
         </button>
         <button
           type="button"
           onClick={onDisconnect}
-          className="rounded-full px-2.5 py-1.5 text-[10.5px] text-muted-foreground transition-colors hover:text-destructive"
+          className="rounded-full px-2.5 py-1.5 text-[10.5px] text-muted-foreground transition-colors hover:text-destructive cursor-pointer"
         >
           Disconnect
         </button>
@@ -56,16 +59,29 @@ export default function ConnectedPanel({ account, prefs, onToggle, onRefresh, on
         ))}
       </section>
 
-      <section className="rounded-[1.5rem] border border-border bg-card px-5">
-        <div className="flex items-center justify-between pt-4">
-          <h2 className="text-[12.5px] font-semibold">Next two weeks</h2>
-          <p className="text-[10.5px] text-muted-foreground">{EVENTS.length} events read</p>
+      <section className="rounded-[1.5rem] border border-border bg-card px-5 py-2">
+        <div className="flex items-center justify-between pt-3 pb-2">
+          <h2 className="text-[12.5px] font-semibold">Live Google Calendar Schedule</h2>
+          <p className="text-[10.5px] text-muted-foreground">
+            {displayEvents.length} {displayEvents.length === 1 ? 'event' : 'events'} read
+          </p>
         </div>
-        <div className="divide-y divide-border">
-          {EVENTS.map((event) => (
-            <EventRow key={event.id} event={event} />
-          ))}
-        </div>
+
+        {displayEvents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <CalendarDays className="h-8 w-8 text-muted-foreground/50 mb-2" />
+            <p className="text-xs font-medium text-foreground">No upcoming events on this Google Calendar.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Add a new meeting or event in Google Calendar, then click Sync above.
+            </p>
+          </div>
+        ) : (
+          <div>
+            {displayEvents.map((event) => (
+              <EventRow key={event.id} event={event} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

@@ -4,53 +4,132 @@
  */
 
 /**
+ * Extracts a formatted 24-hour or local time string (e.g. "10:00") from an event.
+ *
+ * @param {Object} event - Raw Google Calendar event
+ * @returns {string} Time string
+ */
+function extractEventTime(event) {
+  if (event.start?.dateTime) {
+    try {
+      const d = new Date(event.start.dateTime);
+      if (!isNaN(d.getTime())) {
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+      }
+    } catch {
+      // fallback below
+    }
+  }
+  return '09:00';
+}
+
+/**
+ * Detects an intuitive meeting/event type based on event summary and description.
+ *
+ * @param {string} title - Event title/summary
+ * @param {string} description - Event description
+ * @returns {string} Detected type
+ */
+function detectEventType(title = '', description = '') {
+  const text = `${title} ${description}`.toLowerCase();
+  if (text.includes('keynote') || text.includes('speaking') || text.includes('presentation')) return 'Speaking';
+  if (text.includes('panel') || text.includes('roundtable')) return 'Panel';
+  if (text.includes('launch') || text.includes('announcement') || text.includes('milestone')) return 'Milestone';
+  if (text.includes('podcast') || text.includes('interview') || text.includes('recording')) return 'Media';
+  if (text.includes('1:1') || text.includes('one-on-one') || text.includes('sync')) return 'Sync';
+  if (text.includes('onboarding')) return 'Onboarding';
+  if (text.includes('workshop') || text.includes('training')) return 'Workshop';
+  return 'Meeting';
+}
+
+/**
  * Maps a raw Google Calendar event object into the clean JSON schema.
  *
  * Target Schema:
  * {
+ *   "id": "cal-0",
  *   "title": "Client Onboarding Sync",
  *   "date": "2026-11-02T10:00:00-05:00",
- *   "people": ["client@company.com", "manager@company.com"],
+ *   "time": "10:00",
  *   "location": "Google Meet",
- *   "description": "Kickoff call to discuss the new marketing campaign requirements."
+ *   "people": ["client@company.com", "manager@company.com"],
+ *   "description": "Kickoff call to discuss the new marketing campaign requirements.",
+ *   "type": "Meeting",
+ *   "relevance": "High"
  * }
  *
  * @param {Object} event - Raw Google Calendar event resource
+ * @param {number} [index=0] - Event index for fallback ID
  * @returns {Object} Formatted event object
  */
-export function formatGoogleEvent(event) {
+export function formatGoogleEvent(event, index = 0) {
   if (!event || typeof event !== 'object') {
     return {
-      title: '',
-      date: '',
+      id: `cal-${index}`,
+      title: 'Untitled Event',
+      date: new Date().toISOString(),
+      time: '09:00',
+      location: 'Online',
       people: [],
-      location: '',
       description: '',
+      type: 'Meeting',
+      relevance: 'Low',
+      theme: 'Untitled Event',
+      angle: 'No details provided.',
     };
   }
 
-  // Extract attendee email addresses (or fallback to displayName if available)
+  // 1. ID
+  const id = event.id || `cal-${index}`;
+
+  // 2. Title
+  const title = event.summary?.trim() || 'Untitled Event';
+
+  // 3. Date & Time
+  const date = event.start?.dateTime || event.start?.date || new Date().toISOString();
+  const time = extractEventTime(event);
+
+  // 4. People (extract emails from attendees)
   const people = Array.isArray(event.attendees)
     ? event.attendees
         .map((attendee) => attendee.email || attendee.displayName || '')
         .filter(Boolean)
     : [];
 
-  // Determine event date/time (timed events have dateTime, all-day events have date)
-  const date = event.start?.dateTime || event.start?.date || '';
-
-  // Determine location (fallback to 'Google Meet' if hangoutLink / conferenceData is present)
+  // 5. Location
   const location =
     event.location ||
     (event.hangoutLink || event.conferenceData ? 'Google Meet' : '') ||
-    '';
+    (people.length > 0 ? 'Google Meet' : 'Online');
+
+  // 6. Description
+  const description = event.description?.trim() || '';
+
+  // 7. Type
+  const type = detectEventType(title, description);
+
+  // 8. Relevance
+  const relevance =
+    people.length >= 2 || type === 'Speaking' || type === 'Panel' || type === 'Milestone'
+      ? 'High'
+      : people.length > 0
+      ? 'Medium'
+      : 'Low';
 
   return {
-    title: event.summary || '',
+    id,
+    title,
     date,
-    people,
+    time,
     location,
-    description: event.description || '',
+    people,
+    description,
+    type,
+    relevance,
+    theme: description.slice(0, 75) || title,
+    angle: description || `Key takeaways and reflections from ${title}.`,
   };
 }
 
@@ -62,12 +141,12 @@ export function formatGoogleEvent(event) {
  */
 export function formatCalendarEvents(events = []) {
   if (!Array.isArray(events)) return [];
-  return events.map((event) => formatGoogleEvent(event));
+  return events.map((event, index) => formatGoogleEvent(event, index));
 }
 
 /**
  * Fetches the user's schedule from the Google Calendar /events endpoint
- * and maps the raw response data into the clean JSON schema for Person 3.
+ * and maps the raw response data into the clean JSON schema.
  *
  * @param {string} accessToken - Google OAuth 2.0 access token
  * @param {Object} [options={}] - Query and calendar options
@@ -134,7 +213,7 @@ export async function fetchCalendarEvents(accessToken, options = {}) {
   // Format Google's raw data into the clean JSON schema using .map()
   return rawEvents
     .filter((event) => event.status !== 'cancelled')
-    .map((event) => formatGoogleEvent(event));
+    .map((event, index) => formatGoogleEvent(event, index));
 }
 
 // Aliases for compatibility
@@ -147,4 +226,3 @@ export {
 };
 
 export default fetchCalendarEvents;
-

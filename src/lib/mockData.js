@@ -165,14 +165,23 @@ const BODIES = {
 };
 
 export function formatEventDate(date) {
-  return format(parseISO(date), 'EEE d MMM');
+  if (!date) return '';
+  try {
+    const d = parseISO(date);
+    return isNaN(d.getTime()) ? String(date) : format(d, 'EEE d MMM');
+  } catch {
+    return String(date);
+  }
 }
 
 export function composeDraft(event, tone, variant = 0, platform = 'LinkedIn') {
   const hooks = HOOKS[tone] || HOOKS.insightful;
   const hook = hooks[variant % hooks.length];
   const body = BODIES[tone] || BODIES.insightful;
-  const context = `${event.angle} In practice that means ${event.theme} moves from a slide to a decision.`;
+
+  const angleText = event.angle || event.description || event.title || '';
+  const themeText = event.theme || event.description || event.title || '';
+  const context = `${angleText} In practice that means ${themeText} moves from a slide to a decision.`;
   const close = `${event.title} on ${formatEventDate(event.date)} is where I will try to say it out loud. If you will be in the room, come find me.`;
   const tags = platform === 'LinkedIn' ? '\n\n#leadership #product #buildinginpublic' : '';
   return `${hook}\n\n${context}\n\n${body}\n\n${close}${tags}`;
